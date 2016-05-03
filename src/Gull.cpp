@@ -998,7 +998,7 @@ typedef struct {
 } GSP;
 
 typedef struct {
-	volatile long long nodes, active_sp, searching;
+	volatile long long nodes, tb_hits,active_sp, searching;
 #ifndef W32_BUILD
 	volatile long long stop, fail_high;
 #else
@@ -5542,6 +5542,7 @@ template <bool me, bool exclusion> int search_evasion(int beta, int depth, int f
 		if (res != TB_RESULT_FAILED) {
 			hash_high(TbValues[res], TbDepth);
 			hash_low(0, TbValues[res], TbDepth);
+			Smpi->tb_hits++;
 			return TbValues[res];
 		}
 	}
@@ -5912,7 +5913,7 @@ template <bool me> void root() {
 	date++;
 	nodes = check_node = check_node_smp = 0;
 #ifndef TUNER
-	if (parent) Smpi->nodes = 0;
+	if (parent) Smpi->nodes = Smpi->tb_hits = 0;
 #endif
 	memcpy(Data,Current,sizeof(GData));
 	Current = Data;
@@ -6246,9 +6247,10 @@ void send_pv(int depth, int alpha, int beta, int score) {
 #endif
 	if (nps) nps = (snodes * 1000)/nps; 
 	if (score < beta) {
-		if (score <= alpha) fprintf(stdout,"info depth %d seldepth %d score %s%d upperbound nodes %lld nps %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,pv_string);
-		else fprintf(stdout,"info depth %d seldepth %d score %s%d nodes %lld nps %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,pv_string);
-	} else fprintf(stdout,"info depth %d seldepth %d score %s%d lowerbound nodes %lld nps %lld pv %s\n",depth,sel_depth,score_string,(mate ? mate_score : score),snodes,nps,pv_string);
+	if (score <= alpha) fprintf(stdout, "info depth %d seldepth %d score %s%d upperbound nodes %I64d nps %I64d tbhits %I64d pv %s\n", depth, sel_depth, score_string, (mate ? mate_score : score), snodes, nps, Smpi->tb_hits, pv_string);
+		else fprintf(stdout, "info depth %d seldepth %d score %s%d nodes %I64d nps %I64d tbhits %I64d pv %s\n", depth, sel_depth, score_string, (mate ? mate_score : score), snodes, nps, Smpi->tb_hits, pv_string);
+	}
+	else fprintf(stdout, "info depth %d seldepth %d score %s%d lowerbound nodes %I64d nps %I64d tbhits %I64d pv %s\n", depth, sel_depth, score_string, (mate ? mate_score : score), snodes, nps, Smpi->tb_hits, pv_string);
 	fflush(stdout);
 }
 
